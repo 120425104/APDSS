@@ -1,6 +1,6 @@
 # 大气污染扩散模拟系统
 
-![GitHub top language](https://img.shields.io/github/languages/top/ashyseer/APDSS?color=red)
+![GitHub top language](https://img.shields.io/github/languages/top/ashyseer/APDSS?color=red)![GitHub language count](https://img.shields.io/github/languages/count/ashyseer/APDSS)![GitHub repo size](https://img.shields.io/github/repo-size/ashyseer/APDSS?color=green)![GitHub last commit](https://img.shields.io/github/last-commit/ashyseer/APDSS?color=yellow)
 
 ## 系统环境
 
