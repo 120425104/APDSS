@@ -1,5 +1,7 @@
 # 大气污染扩散模拟系统
 
+![https://img.shields.io/badge/HTML-56.1%25-orange](https://img.shields.io/badge/HTML-56.1%-orange)
+
 ## 系统环境
 
 - Windows 7或更高版本
