@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+</head>
+<body>
+<style>
+    .el-header {
+        background-color: rgb(121, 187, 255);
+        color: #FFFFFF;
+        line-height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .el-card {
+        padding-right: 20px;
+        padding-left: 20px;
+        margin-bottom: 20px;
+    }
+
+    .span {
+        margin-bottom: 30px;
+    }
+
+    .demo-table-expand {
+        font-size: 20px;
+    }
+
+    .demo-table-expand label {
+        width: 180px;
+        color: #99a9bf;
+    }
+
+    .demo-table-expand .el-form-item {
+        margin-right: 0;
+        margin-bottom: 0;
+        width: 100%;
+    }
+</style>
+
+<div id="airConditionApp" style="padding-right: 40px; padding-left: 40px; padding-bottom: 20px;">
+    <!--主窗口-->
+    <el-card shadow="hover">
+        <el-header style="text-align: left; font-size: 20px" height="50px">
+            <span>大气模式 Atmospheric Condition
+            <el-button id="airConditionSetting" @click="showSetting()"
+                       style="float:right;background-color: rgb(121, 187, 255); margin-bottom:10px;border:0;margin-top:7px;height:10px;"
+                       type="info" icon="el-icon-setting" slot="append" circle autofocus></el-button></span>
+        </el-header>
+        <el-main>
+            <el-collapse accordion>
+                <el-collapse-item title="地面风速 WindSpeed" name="windSpeedShow">
+                    <el-input placeholder="尚未设置大气模式" v-model="selected.windSpeedGround"
+                              style="width: 30%;margin-top: 10px;margin-bottom: 20px">
+                        <template slot="append">m/s</template>
+                    </el-input>
+                    <div>
+                        <span>距离地面10m处测得的风速。</span>
+                    </div>
+                </el-collapse-item>
+                <el-collapse-item title="风向 Wind Direction" name="windDirectionShow">
+                    <el-input placeholder="尚未设置大气模式" v-model="selected.windDirection"
+                              style="width: 30%;margin-top: 10px;margin-bottom: 20px">
+                        <template slot="append">度</template>
+                    </el-input>
+                    <div>
+                        <span>地面的风向，为与真北方向的夹角，顺时针为正。</span>
+                    </div>
+                </el-collapse-item>
+                <el-collapse-item title="环境温度 Environment Temperature" name="envTemShow">
+                    <el-input placeholder="尚未设置大气模式" v-model="selected.envTem"
+                              style="width: 30%;margin-top: 10px;margin-bottom: 20px">
+                        <template slot="append">K</template>
+                    </el-input>
+                    <div>
+                        <span>环境温度。</span>
+                    </div>
+                </el-collapse-item>
+                <el-collapse-item title="时间 Time" name="timeDomainShow">
+                    <el-input placeholder="尚未设置大气模式" v-model="selected.timeDomain"
+                              style="width: 30%;margin-top: 10px;margin-bottom: 20px">
+                    </el-input>
+                    <div>
+                        <span>所处时刻是白天还是夜晚，1代表白天，2代表夜晚。</span>
+                    </div>
+                </el-collapse-item>
+                <el-collapse-item title="太阳辐射率（仅白天有效） Solar Radiation (Daytime Only)" name="solarRadiationShow"
+                                  :disabled="dayDisable">
+                    <el-input placeholder="尚未设置大气模式" v-model="selected.solarRadiation"
+                              style="width: 30%;margin-top: 10px;margin-bottom: 20px">
+                    </el-input>
+                    <div>
+                        <span>白天的太阳辐射率，分为四个级别————1：强；2：中；3：低；4：多云。</span>
+                    </div>
+                </el-collapse-item>
+                <el-collapse-item title="云量（仅夜晚有效） Cloudage (Night Only)" name="cloudageShow" :disabled="nightDisable">
+                    <el-input placeholder="尚未设置大气模式" v-model="selected.cloudage"
+                              style="width: 30%;margin-top: 10px;margin-bottom: 20px">
+                    </el-input>
+                    <div>
+                        <span>夜晚云量，分为两个级别————1：多云；2：少云。</span>
+                    </div>
+                </el-collapse-item>
+            </el-collapse>
+        </el-main>
+    </el-card>
+
+    <!--大气模式设置-->
+    <el-dialog title="设置" :visible.async="settingVisible" width="80%" @close="settingVisible=false">
+        <el-row>
+            <el-col :xs="24" :md="12">
+                <el-input placeholder="请输入需要查找的大气模式" v-model="keyword" class="input-with-select">
+                    <el-button slot="append" icon="el-icon-search" @click="queryAirByName()"></el-button>
+                </el-input>
+            </el-col>
+            <el-button-group style="margin-left: 40px">
+                <el-button @click="showAddAir()" icon="el-icon-circle-plus-outline"></el-button>
+                <el-button @click="reset()" icon="el-icon-refresh-left"></el-button>
+            </el-button-group>
+        </el-row>
+        <el-table style="top: 20px;width:100%;" :data="airConditions" :fit="true" :show-header="true"
+                  max-height="800">
+            <el-table-column
+                    label="名称"
+                    prop="name"
+                    sortable>
+            </el-table-column>
+            <el-table-column
+                    label="地面风速"
+                    prop="windSpeedGround"
+                    sortable>
+            </el-table-column>
+            <el-table-column
+                    label="风向"
+                    prop="windDirection"
+                    sortable>
+            </el-table-column>
+            <el-table-column
+                    label="环境温度"
+                    prop="envTem"
+                    sortable>
+            </el-table-column>
+            <el-table-column
+                    label="时间"
+                    prop="timeDomain"
+                    sortable>
+            </el-table-column>
+            <el-table-column
+                    label="太阳辐射"
+                    prop="solarRadiation"
+                    sortable>
+            </el-table-column>
+            <el-table-column
+                    label="云量"
+                    prop="cloudage"
+                    sortable>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" width="200px">
+                <template slot-scope="props">
+                    <el-button mc-type="column-el-button" type="primary" icon="el-icon-edit" circle
+                               @click="showEditAir(props.row)">
+                    </el-button>
+                    <el-button mc-type="column-el-button" type="danger" icon="el-icon-delete" circle
+                               @click="deleteAir(props.row)"></el-button>
+                    <el-button mc-type="column-el-button" type="success" icon="el-icon-check" circle
+                               @click="confirm(props.row)"></el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-dialog>
+
+    <!--修改事项对话框-->
+    <el-dialog title="修改大气模式" :visible.async="editAirVisible" width="50%" @close="editAirVisible=false">
+        <el-form label-width="160px" :model="currentAir" ref="currentAir" class="demo-ruleForm">
+            <el-form-item prop="name" label="名称" :rules="{ required: true,trigger: 'blur'}">
+                <el-input type="name" v-model="currentAir.name" placeholder="请输入内容" disabled></el-input>
+            </el-form-item>
+            <el-form-item label="地面风速（m/s）" prop="windSpeedGround"
+                          :rules="[ { required: true, message: '地面风速不能为空', trigger: 'blur' },
+                          { type: 'number', message: '地面风速必须为数字值'}
+                          ]">
+                <el-input type="windSpeedGround" v-model.number="currentAir.windSpeedGround"
+                          placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="风向（度）" prop="windDirection"
+                          :rules="[ { required: true, message: '风向不能为空', trigger: 'blur' },
+                          { type: 'number', message: '风向必须为数字值'}
+                          ]">
+                <el-input type="windDirection" v-model.number="currentAir.windDirection" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="环境温度（K）" prop="envTem"
+                          :rules="[ { required: true, message: '环境温度不能为空', trigger: 'blur' },
+                          { type: 'number', message: '环境温度必须为数字值'}
+                          ]">
+                <el-input type="envTem" v-model.number="currentAir.envTem" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="时间" prop="timeDomain">
+                <el-radio-group v-model="currentAir.timeDomain">
+                    <el-radio :label=1 border>白天</el-radio>
+                    <el-radio :label=2 border>夜晚</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="白天太阳辐射" prop="solarRadiation">
+                <el-radio-group v-model="currentAir.solarRadiation">
+                    <el-radio :label=1 border>强烈</el-radio>
+                    <el-radio :label=2 border>中等</el-radio>
+                    <el-radio :label=3 border>微弱</el-radio>
+                    <el-radio :label=4 border>多云</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="夜晚云量" prop="cloudage">
+                <el-radio-group v-model="currentAir.cloudage">
+                    <el-radio :label=1 border>多云</el-radio>
+                    <el-radio :label=2 border>少云</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item style="text-align: right;">
+                <el-button @click="editAirVisible=false" type="danger" icon="el-icon-close" circle></el-button>
+                <el-button @click="save()" type="success" icon="el-icon-check" circle></el-button>
+            </el-form-item>
+        </el-form>
+    </el-dialog>
+
+    <!--增加事项对话框-->
+    <el-dialog title="增加大气模式" :visible.async="addAirVisible" width="50%" @close="addAirVisible=false">
+        <el-form label-width="160px" :model="currentAir" ref="currentAir" class="demo-ruleForm">
+            <el-form-item prop="name" label="名称" :rules="{ required: true,trigger: 'blur'}">
+                <el-input type="name" v-model="currentAir.name" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="地面风速（m/s）" prop="windSpeedGround"
+                          :rules="[ { required: true, message: '地面风速不能为空', trigger: 'blur' },
+                          { type: 'number', message: '地面风速必须为数字值'}
+                          ]">
+                <el-input type="windSpeedGround" v-model.number="currentAir.windSpeedGround"
+                          placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="风向（度）" prop="windDirection"
+                          :rules="[ { required: true, message: '风向不能为空', trigger: 'blur' },
+                          { type: 'number', message: '风向必须为数字值'}
+                          ]">
+                <el-input type="windDirection" v-model.number="currentAir.windDirection" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="环境温度（K）" prop="envTem"
+                          :rules="[ { required: true, message: '环境温度不能为空', trigger: 'blur' },
+                          { type: 'number', message: '环境温度必须为数字值'}
+                          ]">
+                <el-input type="envTem" v-model.number="currentAir.envTem" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="时间" prop="timeDomain">
+                <el-radio-group v-model="currentAir.timeDomain">
+                    <el-radio :label=1 border>白天</el-radio>
+                    <el-radio :label=2 border>夜晚</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="白天太阳辐射" prop="solarRadiation">
+                <el-radio-group v-model="currentAir.solarRadiation">
+                    <el-radio :label=1 border>强烈</el-radio>
+                    <el-radio :label=2 border>中等</el-radio>
+                    <el-radio :label=3 border>微弱</el-radio>
+                    <el-radio :label=4 border>多云</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="夜晚云量" prop="cloudage">
+                <el-radio-group v-model="currentAir.cloudage">
+                    <el-radio :label=1 border>多云</el-radio>
+                    <el-radio :label=2 border>少云</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item style="text-align: right;">
+                <el-button @click="editAirVisible=false" type="danger" icon="el-icon-close" circle></el-button>
+                <el-button @click="save()" type="success" icon="el-icon-check" circle></el-button>
+            </el-form-item>
+        </el-form>
+    </el-dialog>
+</div>
+
+<div id="pollutionSourceApp" style="padding-right: 40px; padding-left: 40px; padding-bottom: 20px;">
+    <el-card shadow="hover" style="padding-bottom: 20px">
+        <el-header style="text-align: left; font-size: 20px" height="50px">
+            <span>污染源 Pollution Sources</span>
+        </el-header>
+        <el-main>
+            <el-row>
+                <el-col :xs="24" :md="12">
+                    <el-input placeholder="请输入需要查找的污染源名称" v-model="keyword" class="input-with-select">
+                        <el-button slot="append" icon="el-icon-search" @click="queryByName()"></el-button>
+                    </el-input>
+                </el-col>
+                <el-button-group style="margin-left: 40px">
+                    <el-button @click="showAddPollutionSource()" icon="el-icon-circle-plus-outline"></el-button>
+                    <el-button @click="queryAll()" icon="el-icon-refresh-left"></el-button>
+                </el-button-group>
+            </el-row>
+            <el-table style="top: 20px;width:100%;" :data="pollutionSources" :fit="true" :show-header="true"
+                      max-height="800">
+                <el-table-column type="expand">
+                    <template slot-scope="props">
+                        <el-form label-position="left" inline class="demo-table-expand">
+                            <el-form-item label="烟囱高度（m）">
+                                <span>{{ props.row.height }}</span>
+                            </el-form-item>
+                            <el-form-item label="污染物排放率（g/s）">
+                                <span>{{ props.row.emissionRatio }}</span>
+                            </el-form-item>
+                            <el-form-item label="烟流排放速率（m/s）">
+                                <span>{{ props.row.smokeOutSpeed }}</span>
+                            </el-form-item>
+                            <el-form-item label="排出口温度（K）">
+                                <span>{{ props.row.smokeOutTem }}</span>
+                            </el-form-item>
+                            <el-form-item label="烟囱出口内径（m）">
+                                <span>{{ props.row.chiSize }}</span>
+                            </el-form-item>
+                        </el-form>
+                    </template>
+                </el-table-column>
+                <el-table-column
+                        label="污染源名称"
+                        prop="name"
+                        sortable>
+                </el-table-column>
+                <el-table-column
+                        label="经度"
+                        prop="x"
+                        sortable>
+                </el-table-column>
+                <el-table-column
+                        label="纬度"
+                        prop="y"
+                        sortable>
+                </el-table-column>
+                <el-table-column label="操作" fixed="right" width="200px">
+                    <template slot-scope="props">
+                        <el-button mc-type="column-el-button" type="primary" icon="el-icon-edit" circle
+                                   @click="showEditPollutionSource(props.row)">
+                        </el-button>
+                        <el-button mc-type="column-el-button" type="danger" icon="el-icon-delete" circle
+                                   @click="deletePollutionSource(props.row)"></el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </el-main>
+    </el-card>
+
+    <!--修改事项对话框-->
+    <el-dialog title="修改污染源" :visible.async="dialogVisible" width="50%" @close="dialogVisible=false">
+        <el-form label-width="160px" :model="current" ref="current" class="demo-ruleForm">
+            <el-form-item prop="name" label="污染物名称" :rules="{ required: true,trigger: 'blur'}">
+                <el-input type="name" v-model="current.name" placeholder="请输入内容" disabled></el-input>
+            </el-form-item>
+            <el-form-item label="经纬度" prop="n" :rules="{ required: true,trigger: 'blur'}">
+                <el-col :span="11">
+                    <el-input v-model.number="current.x" disabled placeholder="请在地图上选择污染源坐标"
+                              style="width: 100%;"></el-input>
+                </el-col>
+                <el-col :span="11" style="padding-left: 20px">
+                    <el-input v-model.number="current.y" disabled placeholder="请在地图上选择污染源坐标"
+                              style="width: 100%;"></el-input>
+                </el-col>
+                <el-col :span="2" style="padding-left: 20px">
+                    <el-button @click="showMap()" icon="el-icon-location-information" circle></el-button>
+                </el-col>
+            </el-form-item>
+            <el-form-item label="烟囱高度" prop="height"
+                          :rules="[ { required: true, message: '烟囱高度不能为空', trigger: 'blur' },
+                          { type: 'number', message: '烟囱高度必须为数字值'}
+                          ]">
+                <el-input type="height" v-model.number="current.height" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="污染物排放率（g/s）" prop="emissionRatio"
+                          :rules="[ { required: true, message: '污染物排放率不能为空', trigger: 'blur' },
+                          { type: 'number', message: '污染物排放率必须为数字值'}
+                          ]">
+                <el-input type="emissionRatio" v-model.number="current.emissionRatio" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="烟流排放速率（m/s）" prop="smokeOutSpeed"
+                          :rules="[ { required: true, message: '烟流排放速率不能为空', trigger: 'blur' },
+                           {type: 'number', message: '烟流排放速率必须为数字值'}
+                           ]">
+                <el-input type="smokeOutSpeed" v-model.number="current.smokeOutSpeed" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="排出口温度（K）" prop="smokeOutTem"
+                          :rules="[ { required: true, message: '排出口温度不能为空', trigger: 'blur' },
+                          { type: 'number', message: '排出口温度必须为数字值'}
+                          ]">
+                <el-input type="smokeOutTem" v-model.number="current.smokeOutTem" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="烟囱出口内径（m）" prop="chiSize"
+                          :rules="[ { required: true, message: '烟囱出口内径不能为空', trigger: 'blur' },
+                          { type: 'number', message: '烟囱出口内径必须为数字值'}
+                          ]">
+                <el-input type="chiSize" v-model.number="current.chiSize" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item style="text-align: right;">
+                <el-button @click="dialogVisible=false" type="danger" icon="el-icon-close" circle></el-button>
+                <el-button @click="savePollutionSource()" type="success" icon="el-icon-check" circle></el-button>
+            </el-form-item>
+        </el-form>
+    </el-dialog>
+
+    <!--添加事项对话框-->
+    <el-dialog title="添加污染源" :visible.async="addVisible" width="50%" @close="addVisible=false">
+        <el-form label-width="160px" :model="current" ref="current" class="demo-ruleForm">
+            <el-form-item prop="name" label="污染物名称" :rules="{ required: true, message:'污染源名称不能为空',trigger: 'blur'}">
+                <el-input type="name" v-model="current.name" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="经纬度" prop="n" :rules="{ required: true,trigger: 'blur'}">
+                <el-col :span="11">
+                    <el-input v-model.number="current.x" disabled
+                              style="width: 100%;"></el-input>
+                </el-col>
+                <el-col :span="11" style="padding-left: 20px">
+                    <el-input v-model.number="current.y" disabled
+                              style="width: 100%;"></el-input>
+                </el-col>
+                <el-col :span="2" style="padding-left: 20px">
+                    <el-button @click="showMap()" icon="el-icon-location-information" circle></el-button>
+                </el-col>
+            </el-form-item>
+            <el-form-item label="烟囱高度" prop="height"
+                          :rules="[ { required: true, message: '烟囱高度不能为空', trigger: 'blur' },
+                          { type: 'number', message: '烟囱高度必须为数字值'}
+                          ]">
+                <el-input type="height" v-model.number="current.height" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="污染物排放率（g/s）" prop="emissionRatio"
+                          :rules="[ { required: true, message: '污染物排放率不能为空', trigger: 'blur' },
+                          { type: 'number', message: '污染物排放率必须为数字值'}
+                          ]">
+                <el-input type="emissionRatio" v-model.number="current.emissionRatio" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="烟流排放速率（m/s）" prop="smokeOutSpeed"
+                          :rules="[ { required: true, message: '烟流排放速率不能为空', trigger: 'blur' },
+                           {type: 'number', message: '烟流排放速率必须为数字值'}
+                           ]">
+                <el-input type="smokeOutSpeed" v-model.number="current.smokeOutSpeed" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="排出口温度（K）" prop="smokeOutTem"
+                          :rules="[ { required: true, message: '排出口温度不能为空', trigger: 'blur' },
+                          { type: 'number', message: '排出口温度必须为数字值'}
+                          ]">
+                <el-input type="smokeOutTem" v-model.number="current.smokeOutTem" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item label="烟囱出口内径（m）" prop="chiSize"
+                          :rules="[ { required: true, message: '烟囱出口内径不能为空', trigger: 'blur' },
+                          { type: 'number', message: '烟囱出口内径必须为数字值'}
+                          ]">
+                <el-input type="chiSize" v-model.number="current.chiSize" placeholder="请输入内容"></el-input>
+            </el-form-item>
+            <el-form-item style="text-align: right;">
+                <el-button @click="addVisible=false" type="danger" icon="el-icon-close" circle></el-button>
+                <el-button @click="savePollutionSource()" type="success" icon="el-icon-check" circle></el-button>
+            </el-form-item>
+        </el-form>
+    </el-dialog>
+
+    <!-- 地图显示时间框-->
+    <el-dialog title="大气污染源选择" :visible.async="mapVisible" width="80%" @close="mapVisible=false">
+        <templete>
+            <baidu-map style="height: 600px;width: 100%" center="武汉大学" zoom="16"
+                       :scroll-wheel-zoom="true" @click="getClickInfo" @ready="handler"
+                       ak="MTMdfHzZv4SVWqauWpmqOwKjUEysvKpd" @ready="mapReady"></baidu-map>
+        </templete>
+        <el-row style="padding-top: 20px">
+            <el-col :span="8">
+                <el-input type="number" v-model.number="temperate.x" placeholder="请在地图上点击以选择经度"
+                          style="width: 100%;" disabled>
+                    <template slot="prepend">经度</template>
+                </el-input>
+            </el-col>
+            <el-col :span="8" style="padding-left: 10px">
+                <el-input type="number" v-model.number="temperate.y" placeholder="请在地图上点击以选择纬度"
+                          style="width: 100%;" disabled>
+                    <template slot="prepend">纬度</template>
+                </el-input>
+            </el-col>
+            <el-button style="float: right;margin-left: 10px" @click="saveCoor()" type="success" icon="el-icon-check"
+                       circle></el-button>
+            <el-button style="float:right" @click="mapVisible=false" type="danger" icon="el-icon-close"
+                       circle></el-button>
+        </el-row>
+    </el-dialog>
+</div>
+
+<div id="mock" style="padding-right: 40px; padding-left: 40px; padding-bottom: 20px;">
+    <div v-loading.fullscreen.lock="loading" element-loading-text="结果模拟中，可能需要一点时间"></div>
+    <el-row>
+        <el-col :span="2" :offset="11">
+            <el-button type="primary" round @click="showResult()">污染模拟</el-button>
+        </el-col>
+    </el-row>
+</div>
+</body>
+
+<!-- import Vue and element-ui -->
+<script src="https://unpkg.com/vue/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<!-- import Axios -->
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<!-- import BaiDuMap api -->
+<script src="//api.map.baidu.com/api?v=2.0&ak=MTMdfHzZv4SVWqauWpmqOwKjUEysvKpd"></script>
+
+<script src="https://unpkg.com/vue-baidu-map"></script>
+
+<script>
+    Vue.use(VueBaiduMap.default, {
+        ak: 'MTMdfHzZv4SVWqauWpmqOwKjUEysvKpd'
+    });
+
+    var air = new Vue({
+        el: '#airConditionApp',
+        data: {
+            keyword: "",
+            airConditions: [],
+            selected: {},
+            currentAir: {},
+            dayDisable: true,
+            nightDisable: true,
+            settingVisible: false,
+            editAirVisible: false,
+            addAirVisible: false,
+            editMode: false,
+        },
+        methods: {
+            queryAllAir: function () {
+                var path = '/api/gis/allAirCondition';
+                var self = this;
+                axios.get(path)
+                    .then(response => self.airConditions = response.data)
+                    .catch(e => self.$message.error(e.response.data))
+            },
+            queryAirByName: function () {
+                var path = '/api/gis/AirCondition';
+                if (this.keyword != "") {
+                    path = path + "?name=" + this.keyword;
+                    var self = this;
+                    axios.get(path)
+                        .then(response => self.airConditions = response.data)
+                        .catch(e => self.$message.error(e.response.data))
+                } else {
+                    this.queryAllAir()
+                }
+            },
+            reset: function () {
+                this.queryAllAir();
+                this.keyword = "";
+            },
+            showSetting: function () {
+                this.settingVisible = true;
+                this.queryAllAir();
+            },
+            deleteAir: function (airCondition) {
+                var self = this;
+                axios.delete('/api/gis/deleteAirCondition/' + airCondition.name)
+                    .then(response => self.queryAllAir())
+                    .catch(e => self.$message.error(e.response.data))
+            },
+            confirm: function (airCondition) {
+                this.settingVisible = false;
+                this.selected = Object.assign({}, airCondition);
+                if (airCondition.timeDomain === 1) {
+                    this.dayDisable = false;
+                    this.nightDisable = true;
+                } else {
+                    this.dayDisable = true;
+                    this.nightDisable = false;
+                }
+            },
+            showEditAir: function (airCondition) {
+                this.editAirVisible = true;
+                this.editMode = true;
+                this.currentAir = Object.assign({}, airCondition);
+            },
+            showAddAir: function (airCondition) {
+                this.addAirVisible = true;
+                this.editMode = false;
+                this.currentAir = {};
+            },
+            timeChange: function (val) {
+                if (val === 1) {
+                    this.temperateDayDisable = false;
+                    this.temperateNightDisable = true;
+                } else {
+                    this.temperateDayDisable = true;
+                    this.temperateNightDisable = false;
+                }
+            },
+            save: function () {
+                var self = this;
+                if (self.editMode) {
+                    axios.put('api/gis/putAirCondition/' + self.currentAir.name, self.currentAir)
+                        .then(response => self.queryAllAir())
+                        .catch(e => self.$message.error(e.response.data))
+                    this.editAirVisible = false;
+                } else {
+                    axios.post('api/gis/addAirCondition', self.currentAir)
+                        .then(response => self.queryAllAir())
+                        .catch(e => self.$message.error(e.response.data))
+                    this.addAirVisible = false;
+                }
+            },
+        }
+    });
+
+    var source = new Vue({
+        el: '#pollutionSourceApp',
+        data: {
+            keyword: "",
+            pollutionSources: [],
+            current: {},
+            dialogVisible: false,
+            editMode: false,
+            mapVisible: false,
+            addVisible: false,
+            temperate: {x: 0, y: 0},
+            map: 0,
+            BMap: true,
+        },
+        methods: {
+            queryAll: function () {
+                var path = '/api/gis/allPollutionSource';
+                var self = this;
+                axios.get(path)
+                    .then(response => self.pollutionSources = response.data)
+                    .catch(e => self.$message.error(e.response.data))
+                console.log(self.pollutionSources)
+            },
+            queryByName: function () {
+                var path = '/api/gis/pollutionSource';
+                console.log(this.keyword);
+                if (this.keyword != "") {
+
+                    path = path + "?name=" + this.keyword;
+                    var self = this;
+                    axios.get(path)
+                        .then(response => self.pollutionSources = response.data)
+                        .catch(e => self.$message.error(e.response.data))
+                } else {
+                    this.queryAll()
+                }
+            },
+            savePollutionSource: function () {
+                var self = this;
+                if (self.editMode) {
+                    axios.put('api/gis/putPollutionSource/' + self.current.name, self.current)
+                        .then(response => self.queryAll())
+                        .catch(e => self.$message.error(e.response.data))
+                    this.dialogVisible = false;
+                } else {
+                    axios.post('api/gis/addPollutionSource', self.current)
+                        .then(response => self.queryAll())
+                        .catch(e => self.$message.error(e.response.data))
+                    this.addVisible = false;
+                }
+            },
+            deletePollutionSource: function (pollutionSource) {
+                var self = this;
+                axios.delete('/api/gis/deletePollutionSource/' + pollutionSource.name)
+                    .then(response => self.queryAll())
+                    .catch(e => self.$message.error(e.response.data))
+            },
+            showEditPollutionSource: function (pollutionSource) {
+                this.dialogVisible = true;
+                this.editMode = true;
+                this.current = Object.assign({}, pollutionSource);
+            },
+            showAddPollutionSource: function (pollutionSource) {
+                this.addVisible = true;
+                this.editMode = false;
+                this.current = {};
+            },
+            showMap: function () {
+                this.mapVisible = true;
+                // 百度地图API功能
+                this.temperate.x = this.current.x;
+                this.temperate.y = this.current.y;
+            },
+            handler: function ({BMap, map}) {
+                var point = new BMap.Point(114.372042, 30.544861)
+                map.centerAndZoom(point, 16)
+                this.map = map;   //将map变量存储在全局
+            },
+            getClickInfo(e) {
+                this.map.clearOverlays();
+                var myMarker = new BMap.Marker(new BMap.Point(e.point.lng, e.point.lat));
+                this.map.addOverlay(myMarker);
+                this.temperate.x = e.point.lng;
+                this.temperate.y = e.point.lat;
+            },
+            saveCoor: function () {
+                this.current.x = this.temperate.x;
+                this.current.y = this.temperate.y;
+                this.mapVisible = false;
+            }
+        }
+    })
+
+    source.queryAll();
+
+    var button = new Vue({
+        el: '#mock',
+        data: {
+            loading: false,
+        },
+        methods: {
+            try: function () {
+                var airThis = Object.assign({}, air.selected);
+                path = "/api/gis/addPollutedPoints";
+                console.log('结果模拟中...');
+                var self = this;
+                axios.post(path, airThis)
+                    .then(response => {
+                        this.loading = false;
+                        window.open("/result.html");
+                        console.log('模拟完成。')
+                    })
+                    .catch(e => self.$message.error(e.response.data))
+            },
+            showResult: function () {
+                var arr = Object.keys(air.selected);
+                if (arr.length === 0) {
+                    alert('大气污染不能为空！');
+                } else {
+                    this.loading = true;
+                    this.try();
+                }
+            }
+        }
+    })
+
+</script>
+</html>
